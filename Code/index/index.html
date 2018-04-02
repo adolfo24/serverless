@@ -1,0 +1,162 @@
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Serverless</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+        crossOrigin="anonymous"></link>
+    <style>
+        body {
+            padding-top: 4rem;
+            background-color: #f5f5f5;
+        }
+
+        .starter-template {
+            padding: 4rem 1.5rem;
+            text-align: center;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossOrigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossOrigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossOrigin="anonymous"></script>
+
+
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+        <a class="navbar-brand" href="#">
+            Serverless</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02"
+            aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </nav>
+    <main role="main" class="container">
+        <div class="starter-template" id="root">
+
+        </div>
+    </main>
+
+    <script type="text/babel">
+        'use strict';
+let Table = React.createClass({
+    getInitialState:function(){  
+       return {
+        alumnos : [],
+        name:'',
+        email:'',
+        active:false
+       }
+    },
+    componentDidMount: function(){
+      var self = this;
+        fetch("/serverless/user", {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        }
+    }).
+    then((response) => {return response.json()}).
+    then((recurso) => {
+      
+        this.setState({alumnos: recurso});
+    })
+    },
+    updateStateEmail(e) {
+        this.setState({ email: e.target.value });
+    },
+    updateStateName(e) {
+        
+        this.setState({ name: e.target.value });
+    },
+    handleSubmit(event) {
+        event.preventDefault();
+        var context=this;
+        var items = context.state.alumnos;
+        items.push({name:context.state.name,email:context.state.email})
+        
+        
+        fetch("/serverless/user", {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({name:context.state.name,email:context.state.email})
+    }).
+    then((response) => {return response.json()}).
+    then((recurso) => {
+        context.setState({ alumnos: items,name:'',email:'',active:false });
+        
+    })
+    },
+    render: function() {
+      var self = this;
+      return (<div>
+          <button type="button" className="btn btn-primary" data-toggle="modal" data-target="#exampleModal">Add</button>
+<div className="modal fade" id="exampleModal" tabIndex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div className="modal-dialog" role="document">
+    <div className="modal-content">
+      <div className="modal-header">
+        <h5 className="modal-title" id="exampleModalLabel">Add</h5>
+        <button type="button" className="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form className="form-signin" onSubmit={this.handleSubmit} >
+      <div className="modal-body">
+        <input id="name" onChange={this.updateStateName} value={this.state.name} className="form-control" placeholder="Nombre" required autoFocus type="text" name="name"/>
+        <br/>
+        <input  type="email" onChange={this.updateStateEmail} value={this.state.email} id="email" className="form-control" placeholder="Email" required name="email"/>
+      </div>
+      <div className="modal-footer">
+        <button type="button" className="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="submit" className="btn btn-primary" >Save</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+          <table className="table table-dark">
+  <thead>
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col">Nombre</th>
+      <th scope="col">Email</th>
+    </tr>
+  </thead>
+  
+        <tbody>
+          {self.state.alumnos.map(function(alumno,index) {
+            return (
+              <tr>
+              <td>{index+1}</td>
+                <td>{alumno.name}</td>
+                <td>{alumno.email}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+        </table>
+        </div>
+      )
+    }
+});
+ReactDOM.render(<Table />, document.querySelector("#root")
+);
+        
+    </script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,395 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS CloudFormation sample template that contains a single Lambda function behind an API Gateway",
+  "Resources": {
+    "UserTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "Id",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "Id",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "Users"
+      }
+    },
+    "indexLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+                "S3Bucket": "aplicacion-serverless",
+                "S3Key": "index.zip"
+        },
+        "Description": "Retorna el index.htm de nuestra pagina",
+        "FunctionName": "indexLambda",
+        "Handler": "index.handler",
+        "Role": "arn:aws:iam::759340312727:role/lambda_basic_execution",
+        "Runtime": "nodejs4.3"
+      }
+    },
+    "insertLamda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+                "S3Bucket": "aplicacion-serverless",
+                "S3Key": "insert.zip"
+        },
+        "Description": "Agrega un usuario a la base de datos",
+        "FunctionName": "insertLamda",
+        "Handler": "index.handler",
+        "Role": "arn:aws:iam::759340312727:role/lambda_basic_execution",
+        "Runtime": "nodejs4.3"
+      }
+    },
+    "listLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+                "S3Bucket": "aplicacion-serverless",
+                "S3Key": "list.zip"
+           
+        },
+        "Description": "Lista los usuarios",
+        "FunctionName": "listLambda",
+        "Handler": "index.handler",
+        "Role": "arn:aws:iam::759340312727:role/lambda_basic_execution",
+        "Runtime": "nodejs4.3"
+      }
+    },
+
+    "Serverless": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": "Serverless",
+        "Description": "Un ejemplo de pagina web sobre serverless",
+        "FailOnWarnings": true
+      }
+    },
+
+    "LambdaPermissionIndex": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "indexLambda",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:aws:execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "Serverless"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "LambdaPermissionInsert": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "insertLamda",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:aws:execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "Serverless"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "LambdaPermissionList": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "listLambda",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:aws:execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "Serverless"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+
+
+
+
+    "ApiDeployment": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "DependsOn": [
+        "indexGET",
+        "insertPOST",
+        "listGET"
+      ],
+      "Properties": {
+        "RestApiId": {
+          "Ref": "Serverless"
+        },
+        "StageName": "serverless"
+      }
+    },
+    "GreetingResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "Serverless"
+        },
+        "ParentId": {
+          "Fn::GetAtt": [
+            "Serverless",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "user"
+      }
+    },
+    "indexGET": {
+      "DependsOn": "LambdaPermissionIndex",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "indexLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "text/html": "$input.path('$')"
+              },
+              "ResponseParameters": {
+                "method.response.header.Content-Type": "'text/html'"
+              }
+            }
+          ]
+        },
+        "ResourceId": {
+          "Fn::GetAtt": [
+            "Serverless",
+            "RootResourceId"
+          ]
+        },
+        "RestApiId": {
+          "Ref": "Serverless"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200,
+            "ResponseParameters": {
+              "method.response.header.Content-Type": true
+            }
+          }
+        ]
+      }
+    },
+    "insertPOST": {
+      "DependsOn": "LambdaPermissionInsert",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "POST",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "insertLamda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ]
+        },
+        "ResourceId": {
+          "Ref": "GreetingResource"
+        },
+        "RestApiId": {
+          "Ref": "Serverless"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    },
+    "listGET": {
+      "DependsOn": "LambdaPermissionList",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "listLambda",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ],
+        },
+        "ResourceId": {
+          "Ref": "GreetingResource"
+        },
+        "RestApiId": {
+          "Ref": "Serverless"
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": 200
+          }
+        ]
+      }
+    }
+
+
+  },
+  "Outputs": {
+    "RootUrl": {
+      "Description": "Root URL of the API gateway",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "Serverless"
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".amazonaws.com","/serverless"
+          ]
+        ]
+      }
+    }
+  }
+}
